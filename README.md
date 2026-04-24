@@ -58,25 +58,31 @@ flowchart TD
 
 ## Quick Start
 
-> **Prerequisites:** Python 3.10+, Java 17+, 16GB+ RAM, [TfNSW API key](https://opendata.transport.nsw.gov.au/)
+> **Prerequisites:** 16GB+ RAM, [TfNSW API key](https://opendata.transport.nsw.gov.au/)
+
+### Option A: Docker (Recommended)
+The easiest way to run the stack. Requires Docker and Docker Compose.
 
 ```bash
-# 1. Create and activate a virtual environment
+# 1. Configure your API key
+cp .env.example .env   # edit .env and add your TFNSW_API_KEY
+
+# 2. Start the stack (downloads data, builds graph, starts server)
+docker compose up -d
+
+# 3. Wait for OTP to be healthy (takes 5-10 minutes on first run)
+docker compose ps
+```
+
+### Option B: Bare Metal
+Requires Python 3.10+ and Java 17+.
+
+```bash
 python -m venv venv && source venv/bin/activate
-
-# 2. Install dependencies
 pip install -r requirements.txt
-
-# 3. Configure your API key
 cp .env.example .env   # then edit .env and add your TFNSW_API_KEY
-
-# 4. Download GTFS timetables + NSW OSM map (~600MB total)
 python scripts/download_data.py
-
-# 5. Build the OTP transit graph (takes 5–10 min → produces otp_data/graph.obj)
 ./scripts/build_graph.sh
-
-# 6. Start the routing server (keep this terminal open)
 ./scripts/run_server.sh
 ```
 
@@ -84,9 +90,10 @@ python scripts/download_data.py
 
 | Variable | Default | Description |
 |---|---|---|
-| `TFNSW_API_KEY` | — | TfNSW Open Data API key (required for download only) |
+| `TFNSW_API_KEY` | — | TfNSW Open Data API key (required for download) |
 | `OTP_MEMORY` | `12G` | Java heap for **running** the OTP server |
 | `OTP_BUILD_MEMORY` | `12G` | Java heap for **building** the transit graph |
+| `OTP_URL` | `http://localhost:8080` | URL for the CLI client to connect to |
 
 ---
 
@@ -100,7 +107,7 @@ export PYTHONPATH=src
 
 ### Route Planning
 
-**Coordinates → station ID (depart at):**
+**Via Host CLI:**
 ```bash
 python src/nsw_commute/cli.py \
   --from-lat -33.8221 --from-lon 151.0179 \
@@ -108,9 +115,9 @@ python src/nsw_commute/cli.py \
   --date 2026-04-07 --time 07:30
 ```
 
-**Station → station (arrive by):**
+**Via Docker CLI:**
 ```bash
-python src/nsw_commute/cli.py \
+docker compose run --rm cli \
   --from-id "1:215010" --to-id "1:200030" \
   --date 2026-04-07 --time 09:00 --arrive-by
 ```
@@ -178,8 +185,16 @@ flowchart TD
 crontab -e
 ```
 
-Add the following (see `crontab.example` for a ready-to-paste block):
+**For Docker Setup:**
+```cron
+# Daily GTFS refresh at 3:00 AM AEST
+0 3 * * * cd /home/shannon/Workspace/playground/tfnsw && docker compose run --rm data-init ./scripts/docker-refresh.sh && docker compose restart otp-server >> logs/refresh.log 2>&1
 
+# Weekly OSM + GTFS refresh (Sunday 2:00 AM AEST)
+0 2 * * 0 cd /home/shannon/Workspace/playground/tfnsw && docker compose run --rm data-init ./scripts/docker-refresh.sh --include-osm && docker compose restart otp-server >> logs/refresh.log 2>&1
+```
+
+**For Bare Metal Setup:**
 ```cron
 # Daily GTFS refresh at 3:00 AM AEST
 0 3 * * * cd /home/shannon/Workspace/playground/tfnsw && ./scripts/refresh.sh >> logs/refresh.log 2>&1
@@ -191,8 +206,7 @@ Add the following (see `crontab.example` for a ready-to-paste block):
 ### Logs
 
 ```bash
-tail -50 logs/refresh.log      # refresh pipeline activity
-tail -f logs/otp_server.log    # live OTP server output
+docker compose logs -f otp-server
 ```
 
 ---

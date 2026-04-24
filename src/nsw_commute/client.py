@@ -1,9 +1,11 @@
 import httpx
 import asyncio
 from datetime import datetime
+import os
 
 class OTPClient:
-    def __init__(self, base_url="http://localhost:8080"):
+    def __init__(self, base_url=None):
+        base_url = base_url or os.getenv("OTP_URL", "http://localhost:8080")
         self.url = f"{base_url}/otp/routers/default/index/graphql"
 
     def format_time(self, ms):

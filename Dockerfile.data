@@ -1,0 +1,25 @@
+FROM python:3.13-slim-bookworm
+
+# Install Java JRE for graph building and curl for health checks
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        openjdk-17-jre-headless curl && \
+    rm -rf /var/lib/apt/lists/*
+
+ARG OTP_VERSION=2.5.0
+ENV OTP_BUILD_MEMORY=12G
+
+# Download OTP JAR (needed for graph build)
+RUN curl -fsSL \
+    "https://repo1.maven.org/maven2/org/opentripplanner/otp/${OTP_VERSION}/otp-${OTP_VERSION}-shaded.jar" \
+    -o /opt/otp.jar
+
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY scripts/ ./scripts/
+COPY src/ ./src/
+
+# Default: run the refresh workflow
+ENTRYPOINT ["./scripts/docker-refresh.sh"]

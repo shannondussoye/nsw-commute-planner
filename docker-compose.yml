@@ -1,0 +1,54 @@
+services:
+  otp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.otp
+    container_name: nsw-otp-server
+    ports:
+      - "8080:8080"
+    environment:
+      - OTP_MEMORY=${OTP_MEMORY:-12G}
+    volumes:
+      - otp-data:/var/otp
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 14G
+    depends_on:
+      data-init:
+        condition: service_completed_successfully
+
+  # One-shot container: downloads data + builds graph, then exits
+  data-init:
+    build:
+      context: .
+      dockerfile: Dockerfile.data
+    container_name: nsw-data-init
+    environment:
+      - TFNSW_API_KEY=${TFNSW_API_KEY}
+      - OTP_BUILD_MEMORY=${OTP_BUILD_MEMORY:-12G}
+    volumes:
+      - otp-data:/var/otp
+      - app-data:/app/data
+    command: ["./scripts/docker-init.sh"]
+    deploy:
+      resources:
+        limits:
+          memory: 14G
+
+  cli:
+    build:
+      context: .
+      dockerfile: Dockerfile.data
+    environment:
+      - OTP_URL=http://otp-server:8080
+    volumes:
+      - app-data:/app/data
+    entrypoint: ["python", "src/nsw_commute/cli.py"]
+    profiles: ["cli"]
+    network_mode: service:otp-server
+
+volumes:
+  otp-data:
+  app-data:
