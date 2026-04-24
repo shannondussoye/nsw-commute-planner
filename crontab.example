@@ -1,0 +1,11 @@
+# NSW Commute — Cron Schedule
+# ============================================================================
+# Install by running: crontab -e
+# Then paste the lines below.
+# ============================================================================
+
+# Daily GTFS timetable refresh at 3:00 AM AEST (skip OSM)
+0 3 * * * cd /home/shannon/Workspace/playground/tfnsw && ./scripts/refresh.sh >> logs/refresh.log 2>&1
+
+# Weekly OSM + GTFS refresh — Sunday 2:00 AM AEST
+0 2 * * 0 cd /home/shannon/Workspace/playground/tfnsw && ./scripts/refresh.sh --include-osm >> logs/refresh.log 2>&1
