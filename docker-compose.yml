@@ -49,6 +49,21 @@ services:
     profiles: ["cli"]
     network_mode: service:otp-server
 
+  api-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.data
+    container_name: nsw-api-server
+    ports:
+      - "8001:8001"
+    environment:
+      - OTP_URL=http://otp-server:8080
+    volumes:
+      - .:/app  # Mount local dir for hot reloading
+    entrypoint: ["python", "api_server.py"]
+    depends_on:
+      - otp-server
+
 volumes:
   otp-data:
   app-data:
