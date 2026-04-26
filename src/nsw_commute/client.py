@@ -209,6 +209,12 @@ class OTPClient:
                     
                     for leg in plan.get("legs", []):
                         mode = leg["mode"]
+                        # Map internal OTP modes to user-friendly NSW labels
+                        if mode == "SUBWAY":
+                            mode = "METRO"
+                        elif mode == "RAIL":
+                            mode = "TRAIN"
+                        
                         dur_min = self.format_duration(leg["duration"])
                         mode_breakdown[mode] = round(mode_breakdown.get(mode, 0) + dur_min, 1)
                         
