@@ -27,6 +27,7 @@ flowchart TD
     subgraph consumer["Consumer"]
         CLIENT["OTPClient\nasync GraphQL client"]
         CLI["cli.py"]
+        API["api_server.py\nFastAPI · port 8001"]
         UPSTREAM["Upstream System\ne.g. analytics pipeline"]
     end
 
@@ -43,7 +44,9 @@ flowchart TD
 
     OTP -->|"GraphQL"| CLIENT
     CLIENT --> CLI
+    CLIENT --> API
     CLI --> UPSTREAM
+    API --> UPSTREAM
 ```
 
 ## Features
@@ -135,6 +138,52 @@ python src/nsw_commute/cli.py --list
 ```
 
 All commands output structured JSON.
+
+---
+
+## REST API Reference
+
+The project includes a FastAPI microservice wrapper for programmatic access to the routing engine.
+
+### Running the API
+
+**Locally:**
+```bash
+python api_server.py
+```
+
+**Via Docker Compose:**
+```bash
+docker compose up -d api-server
+```
+
+The server runs on **port 8001** by default. Interactive documentation is available at `http://localhost:8001/docs`.
+
+### Endpoints
+
+#### `GET /route`
+Calculates the best multimodal route.
+
+**Parameters:**
+- `from_lat`, `from_lon`: Origin coordinates
+- `from_id`: Origin Station ID (e.g. `1:200060`)
+- `to_lat`, `to_lon`: Destination coordinates
+- `to_id`: Destination Station ID
+- `date`: `YYYY-MM-DD` (defaults to today)
+- `time`: `HH:mm` (defaults to now)
+- `arrive_by`: `true/false`
+
+**Example:**
+```bash
+curl "http://localhost:8001/route?from_id=1:200060&to_id=1:215010&date=2026-04-07&time=08:30"
+```
+
+#### `GET /stations/search`
+Search for Rail/Metro stations.
+- `q`: Search query (e.g. `Central`)
+
+#### `GET /stations`
+Lists all Rail/Metro parent stations.
 
 ---
 
@@ -231,6 +280,7 @@ tfnsw/
 ├── src/nsw_commute/
 │   ├── client.py          # Async OTP GraphQL client
 │   └── cli.py             # Command-line interface
+├── api_server.py          # FastAPI microservice wrapper
 ├── tests/
 │   └── test_client.py     # Unit tests (mocked HTTP)
 ├── data/                  # Downloaded GTFS + OSM (gitignored)
